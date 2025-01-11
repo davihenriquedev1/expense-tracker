@@ -10,9 +10,12 @@ type Props = {
 }
 
 const schema =  z.object({
-    date: z.date({ required_error: "Insira uma data válida" }), 
-    category: z.string().min(1, "Insira uma categoria válida"),
-    title: z.string().min(1, "Insira um título válido"),
+    date: z.preprocess(
+        (value) => (typeof value === "string" && value ? new Date(value) : value),
+        z.date({ required_error: "Insira uma data válida" })
+    ),
+    category: z.string().min(1, "Insira uma categoria"),
+    title: z.string().min(1, "Insira um título"),
     value: z.string().min(1, "Insira um valor").transform(value => parseFloat(value).toFixed(2))
 })
 
@@ -20,7 +23,7 @@ type FormData = z.infer<typeof schema>
 
 export const InsertArea = ({onAdd}:Props) => {
 
-    const {register, handleSubmit, watch, formState:{errors}, setValue} = useForm<FormData>({
+    const {register, handleSubmit, watch, formState:{errors}, setValue, reset} = useForm<FormData>({
         resolver:zodResolver(schema),
         defaultValues:{
             date:new Date(),
@@ -31,19 +34,26 @@ export const InsertArea = ({onAdd}:Props) => {
     })
 
     const handleSubmitItem =(values:FormData) => {
-        console.log({
+        onAdd({
             title:values.title, 
             date:values.date,
             category:values.category, 
             value:Number(values.value)
         })
-        //onAdd()
+        reset()
     }
-
+    
     const handleValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = maskNumber(undefined, e.target.value);
         setValue('value', value)
     }
+    const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const date = new Date(e.target.value);
+        const year = date.getFullYear();
+        const month = date.getMonth();
+        const day = date.getDate()+1;
+        setValue("date", new Date(year, month, day))
+    }   
 
     return (
         <div className="bg-white shadow-lg rounded-md p-2 mt-4">
@@ -59,7 +69,7 @@ export const InsertArea = ({onAdd}:Props) => {
                     <select {...register("category")} className={`outline-0 border rounded-lg p-[7px] ${errors.category? 'border-red-600/30': 'border-sky-800/30'}`}>
                         <option value="">---</option>
                         {Object.entries(categories).map(([key, value]) => (
-                            <option key={key} value={value.title}>{value.title}</option>
+                            <option key={key} value={key}>{value.title}</option>
                         ))
                         }
                     </select>
@@ -67,15 +77,21 @@ export const InsertArea = ({onAdd}:Props) => {
                 </div>
                 <div className="flex flex-col">
                     <label htmlFor="date" className="font-bold">Data</label>
-                    <input {...register("date")} type="date" name="" id="date" title="date" className={`outline-0 border rounded-lg p-[3px] cursor-pointer ${errors.date? 'border-red-600/30': 'border-sky-800/30'}`} />
+                    <input {...register("date")} type="date" value={
+                        watch("date")
+                            ? new Date(watch("date")).toISOString().split("T")[0]
+                            : ""
+                    } onChange={handleDateChange} name="" id="date" title="date" className={`outline-0 border rounded-lg p-[3px] cursor-pointer ${errors.date? 'border-red-600/30': 'border-sky-800/30'}`} />
                     {errors.date && <span className="text-red-700">{errors.date.message}</span>}
                 </div>
                 <div className="flex flex-col">
                     <label htmlFor="value" className="font-bold">Valor</label>
-                    <input {...register("value")} onChange={handleValueChange} type="text" name="value" id="value" title="value" className={`outline-0 border border-sky-800/30 rounded-lg p-1 cursor-pointer ${errors.value? 'border-red-600/30': 'border-sky-800/30'}`}/>
+                    <input {...register("value")} onChange={handleValueChange} type="text" name="value" id="value" title="value" className={`outline-0 border border-sky-800/30 rounded-lg p-1 cursor-pointer ${errors.value? 'border-red-600/30': 'border-sky-800/30'}`} />
                     {errors.value && <span className="text-red-700">{errors.value.message}</span>}
                 </div>
-                <button title="Insert" type="submit" className="bg-sky-800 rounded-3xl text-3xl text-white">Adicionar</button>
+                <div className="flex-1 col-span-2 flex justify-center md:justify-start">
+                    <button title="Insert" type="submit" className="bg-sky-800 px-3 py-2 rounded-3xl text-3xl text-white ">Adicionar</button>
+                </div>
             </form>
         </div>
     )
